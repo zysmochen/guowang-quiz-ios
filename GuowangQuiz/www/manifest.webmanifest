@@ -1,0 +1,17 @@
+{
+  "name": "国网刷题 · 2027版",
+  "short_name": "国网刷题",
+  "description": "国家电网高校毕业生招聘考试公共与行业知识题库刷题工具",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f2f5f3",
+  "theme_color": "#0b7a53",
+  "lang": "zh-CN",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
