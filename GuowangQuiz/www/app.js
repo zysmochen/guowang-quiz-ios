@@ -873,6 +873,37 @@
   }
 
   /* ---------------- 初始化 ---------------- */
+  var EXAM_DATE = new Date(2026, 11, 6);   // 2026 年 12 月 6 日，招聘考试当天
+
+  function examDaysLeft() {
+    var now = new Date();
+    var today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    var exam = new Date(EXAM_DATE.getFullYear(), EXAM_DATE.getMonth(), EXAM_DATE.getDate());
+    return Math.round((exam - today) / 86400000);
+  }
+
+  function updateCountdown() {
+    var el = $('#examCountdown');
+    if (!el) return;
+    var d = examDaysLeft();
+    el.className = 'countdown';
+    el.title = '考试日：2026 年 12 月 6 日';
+    if (d > 0) {
+      if (d <= 7) {
+        el.className = 'countdown urgent';
+        el.innerHTML = '距考试 <b>' + d + '</b> 天';
+      } else {
+        el.textContent = '距考试 ' + d + ' 天';
+      }
+    } else if (d === 0) {
+      el.className = 'countdown urgent';
+      el.innerHTML = '今天考试 · <b>加油</b>';
+    } else {
+      el.className = 'countdown done';
+      el.textContent = '考试已结束';
+    }
+  }
+
   function init() {
     var counts = { single: 0, multi: 0, judge: 0 };
     BANK.forEach(function (q) { counts[q.type]++; });
@@ -883,6 +914,8 @@
     syncCountInput();
     renderPartChips();
     renderPool();
+    updateCountdown();
+    setInterval(updateCountdown, 600000);
     updateBadge();
     syncSwitches();
 
