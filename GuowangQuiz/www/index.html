@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<meta name="theme-color" content="#0b7a53">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="国网刷题">
+<title>国网刷题 · 2027版</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="app">
+  <header class="appbar">
+    <div class="brand">
+      <div class="logo">国网</div>
+      <div>
+        <h1>国网刷题</h1>
+        <p id="bankMeta">公共与行业知识 · 2027版</p>
+      </div>
+    </div>
+    <button class="badge-btn" id="quickWrong">错题本 <b id="wrongBadge">0</b></button>
+  </header>
+
+  <main>
+    <section class="screen active" id="screen-home">
+      <div class="card">
+        <div class="card-title">组卷设置</div>
+
+        <div class="row-label">题型 <span class="hint">可多选</span></div>
+        <div class="chips" id="typeChips"></div>
+
+        <div class="row-label">随机出题数量</div>
+        <div class="chips" id="countChips"></div>
+        <div class="count-custom">
+          <label for="countCustom">自定义题量</label>
+          <input id="countCustom" type="number" inputmode="numeric" min="1" max="832" placeholder="1～832">
+          <span>题</span>
+        </div>
+
+        <div class="row-label">章节范围 <span class="hint">可多选</span></div>
+        <div class="chips" id="partChips"></div>
+
+        <div class="switch-row" style="margin-top:16px">
+          <div>
+            <div>选项顺序随机打乱</div>
+            <div class="desc">A/B/C/D 顺序随机重排，答案跟随选项内容</div>
+          </div>
+          <button class="switch" id="swShuffle" aria-label="选项乱序"></button>
+        </div>
+
+        <div class="switch-row">
+          <div>
+            <div>即时判定</div>
+            <div class="desc">关闭后为模拟考试，交卷后统一批改</div>
+          </div>
+          <button class="switch" id="swInstant" aria-label="即时判定"></button>
+        </div>
+
+        <div class="pool-line">
+          <span>当前可抽题</span><b id="poolCount">0</b><span>题</span>
+        </div>
+
+        <button class="primary" id="btnStart">开始刷题</button>
+      </div>
+
+      <div class="card">
+        <div class="card-title">专项练习</div>
+        <button class="ghost special" id="btnJudgeFalse">
+          <span>只练答案「错误」的判断题</span><b id="cntJudgeFalse">0</b>
+        </button>
+        <button class="ghost special" id="btnMultiPartial">
+          <span>只练「不全选」多选题</span><b id="cntMultiPartial">0</b>
+        </button>
+        <button class="ghost special" id="btnBadMulti">
+          <span>只练错选 · 漏选多选</span><b id="badMultiCount">0</b>
+        </button>
+        <button class="ghost special" id="btnWrongSession">
+          <span>重做全部错题</span><b id="cntWrong">0</b>
+        </button>
+        <div class="row-2" style="margin-top:12px">
+          <button class="ghost" id="btnRecite">背题模式</button>
+          <button class="ghost" id="btnQuick20">来 20 题</button>
+        </div>
+        <p class="sub-tip">专项练习同样按当前题量与选项乱序设置出题</p>
+      </div>
+    </section>
+
+    <section class="screen" id="screen-wrong">
+      <div class="card">
+        <div class="card-title">错题本 <span class="hint" id="wrongTotal"></span></div>
+        <div class="chips" id="wrongFilters"></div>
+        <div class="switch-row" style="margin-top:12px;border-top:none;padding-top:2px">
+          <div>
+            <div>重做时打乱选项顺序</div>
+            <div class="desc">错题本重做、只练错选漏选都遵循此设置</div>
+          </div>
+          <button class="switch" id="swWrongShuffle" aria-label="错题重做乱序"></button>
+        </div>
+        <div class="row-2" style="margin-top:14px">
+          <button class="ghost" id="btnRedoWrong">重做全部错题</button>
+          <button class="ghost danger" id="btnClearWrong">清空错题本</button>
+        </div>
+      </div>
+      <div id="wrongList"></div>
+    </section>
+
+    <section class="screen" id="screen-stats">
+      <div class="card">
+        <div class="card-title">累计统计</div>
+        <div class="stat-hero">
+          <div><b id="stAnswered">0</b><span>累计答题</span></div>
+          <div><b id="stCorrect">0</b><span>答对</span></div>
+          <div><b id="stRate">0%</b><span>正确率</span></div>
+        </div>
+        <div class="stat-block" id="statDetail"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">分类统计</div>
+        <div id="typeStats"></div>
+      </div>
+
+      <button class="ghost danger" id="btnResetStats" style="width:100%">重置统计</button>
+    </section>
+
+    <section class="screen" id="screen-settings">
+      <div class="card">
+        <div class="card-title">答题偏好</div>
+        <div class="switch-row">
+          <div><div>选项顺序随机打乱</div><div class="desc">关闭后按题库原始顺序显示</div></div>
+          <button class="switch" id="swShuffle2" aria-label="选项乱序"></button>
+        </div>
+        <div class="switch-row">
+          <div><div>即时判定</div><div class="desc">关闭后为模拟考试模式</div></div>
+          <button class="switch" id="swInstant2" aria-label="即时判定"></button>
+        </div>
+        <div class="switch-row">
+          <div><div>答对后自动移出错题本</div><div class="desc">重做答对的题自动消除</div></div>
+          <button class="switch" id="swAutoRemove" aria-label="自动移出"></button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">题库信息</div>
+        <div class="stat-line"><span>题目总数</span><span class="v" id="infoTotal"></span></div>
+        <div class="stat-line"><span>单选题</span><span class="v" id="infoSingle"></span></div>
+        <div class="stat-line"><span>多选题</span><span class="v" id="infoMulti"></span></div>
+        <div class="stat-line"><span>判断题</span><span class="v" id="infoJudge"></span></div>
+        <div class="stat-line"><span>版本</span><span class="v">2027 版</span></div>
+      </div>
+
+      <button class="ghost danger" id="btnResetAll" style="width:100%">清除全部数据</button>
+      <p style="text-align:center;color:#9aa8a1;font-size:12px;margin-top:14px">纯离线运行 · 数据仅保存在本机</p>
+    </section>
+  </main>
+
+  <nav class="tabbar">
+    <button class="tab active" data-tab="home"><span class="dot"></span>刷题</button>
+    <button class="tab" data-tab="wrong"><span class="dot"></span>错题本</button>
+    <button class="tab" data-tab="stats"><span class="dot"></span>统计</button>
+    <button class="tab" data-tab="settings"><span class="dot"></span>设置</button>
+  </nav>
+</div>
+
+<div class="quiz hidden" id="quiz">
+  <header class="quizbar">
+    <button class="icon-btn" id="btnQuizBack">‹</button>
+    <div class="progress-wrap"><div class="progress"><i id="progressFill"></i></div></div>
+    <div class="counter" id="quizCounter">1/10</div>
+    <button class="icon-btn" id="btnCard" style="width:auto;padding:0 8px;font-size:13px">答题卡</button>
+  </header>
+  <div class="quiz-body" id="quizBody"></div>
+  <footer class="quiz-foot" id="quizFoot"></footer>
+</div>
+
+<div class="mask hidden" id="mask"></div>
+<div class="drawer" id="drawer">
+  <h3>答题卡</h3>
+  <div class="drawer-row">
+    <span>选项顺序随机打乱</span>
+    <button class="switch" id="swSessionShuffle" aria-label="本局乱序"></button>
+  </div>
+  <div class="legend">
+    <span><i style="background:#d9f2e5"></i>答对</span>
+    <span><i style="background:#fbecea"></i>答错</span>
+    <span><i style="background:#e8f4ee"></i>已作答</span>
+    <span><i style="background:#fff;border:1px solid #e3ebe7"></i>未作答</span>
+  </div>
+  <div class="card-grid" id="cardGrid"></div>
+  <button class="primary" id="btnFinish">交卷并查看成绩</button>
+</div>
+
+<div class="result hidden" id="result"></div>
+<div class="toast" id="toast"></div>
+
+<script src="questions.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
