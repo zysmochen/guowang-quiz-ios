@@ -171,6 +171,7 @@
   /* ---------------- 答题会话 ---------------- */
   var session = null;
   var autoTimer = null;
+  var AUTO_MS = 400;   // 答对后自动翻页延时
 
   function clearAuto() {
     if (autoTimer) { clearTimeout(autoTimer); autoTimer = null; }
@@ -358,8 +359,8 @@
         '<span>正确答案：' + correctText(q, keys) + '</span></div>';
     } else if (locked) {
       var ok = res === 'correct';
-      var autoHint = (ok && q.type !== 'multi' && s.idx < total - 1)
-        ? '<i class="auto-hint">自动下一题…</i>' : '';
+      var autoHint = (ok && s.idx < total - 1)
+        ? '<i class="auto-hint" data-ms="' + AUTO_MS + '">自动下一题…</i>' : '';
       feedback = '<div class="verdict ' + (ok ? 'ok' : 'bad') + '">' +
         '<strong>' + answerLabel(q, res) + '</strong>' +
         '<span>正确答案：' + correctText(q, keys) + '</span>' + autoHint + '</div>';
@@ -457,16 +458,16 @@
     }
     renderQuiz();
 
-    // 单选 / 判断答对后自动翻页；答错或未作答则停留，等用户自己点下一题
+    // 单选 / 判断 / 多选（提交后全选正确）答对都自动翻页；答错则停留，等用户自己点下一题
     clearAuto();
-    if (s.instant && q.type !== 'multi' && st === 'correct' && s.idx < s.ids.length - 1) {
+    if (s.instant && st === 'correct' && s.idx < s.ids.length - 1) {
       var answeredIdx = s.idx;
       autoTimer = setTimeout(function () {
         autoTimer = null;
         if (session !== s || s.idx !== answeredIdx) return;
         if (s.res[answeredIdx] !== 'correct') return;
         nextQuestion();
-      }, 760);
+      }, AUTO_MS);
     }
   }
 
