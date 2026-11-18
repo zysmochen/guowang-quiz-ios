@@ -1,0 +1,74 @@
+name: Build IPA
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-14
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Toolchain info
+        run: |
+          xcodebuild -version
+          echo "---"
+          xcodebuild -list -project GuowangQuiz.xcodeproj || true
+
+      - name: Ensure project is readable (fallback to XcodeGen)
+        run: |
+          if xcodebuild -list -project GuowangQuiz.xcodeproj > /dev/null 2>&1; then
+            echo "project ok"
+          else
+            echo "project unreadable, regenerating with XcodeGen"
+            brew install xcodegen
+            xcodegen generate
+            xcodebuild -list -project GuowangQuiz.xcodeproj
+          fi
+
+      - name: Build (code signing disabled)
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project GuowangQuiz.xcodeproj \
+            -target GuowangQuiz \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath build \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGN_STYLE=Manual \
+            DEVELOPMENT_TEAM="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Package unsigned IPA
+        run: |
+          set -e
+          APP_PATH=$(find build/Build/Products/Release-iphoneos -maxdepth 1 -name "*.app" | head -n 1)
+          echo "app bundle: $APP_PATH"
+          test -n "$APP_PATH"
+          /usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" "$APP_PATH/Info.plist"
+          ls -la "$APP_PATH" | head -n 20
+          rm -rf Payload GuowangQuiz-unsigned.ipa
+          mkdir -p Payload
+          cp -R "$APP_PATH" Payload/
+          zip -qry GuowangQuiz-unsigned.ipa Payload
+          ls -lh GuowangQuiz-unsigned.ipa
+          unzip -l GuowangQuiz-unsigned.ipa | head -n 30
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: GuowangQuiz-unsigned-ipa
+          path: GuowangQuiz-unsigned.ipa
+          if-no-files-found: error
+          retention-days: 30
