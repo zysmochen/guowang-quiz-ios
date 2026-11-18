@@ -244,6 +244,14 @@ main { flex: 1; padding: 16px 16px 96px; }
   font-size: 14px;
 }
 .ghost.special b { font-size: 13px; color: var(--green-dark); background: var(--green-soft); border-radius: 8px; padding: 2px 8px; }
+.ghost.special.recite { border-color: #cfe6da; background: #f4faf7; }
+.ghost.special.recite b { background: #fff; border: 1px solid #cfe6da; }
+.sub-divider {
+  display: flex; align-items: center; gap: 8px;
+  margin: 16px 0 12px;
+  font-size: 12px; color: #8b9a92;
+}
+.sub-divider::after { content: ""; flex: 1; height: 1px; background: #e6eee9; }
 .sub-tip { font-size: 12px; color: #9aa8a1; margin: 8px 0 0; text-align: center; }
 
 .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }

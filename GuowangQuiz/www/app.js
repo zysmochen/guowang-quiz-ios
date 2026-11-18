@@ -285,6 +285,10 @@
     if (mp) mp.textContent = multiPartialIds().length;
     var wt = $('#cntWrong');
     if (wt) wt.textContent = wrongCount();
+    var rjf = $('#cntReciteJudgeFalse');
+    if (rjf) rjf.textContent = judgeFalseIds().length;
+    var rmp = $('#cntReciteMultiPartial');
+    if (rmp) rmp.textContent = multiPartialIds().length;
   }
 
   function answerLabel(q, status) {
@@ -782,6 +786,18 @@
         var rp = currentPool();
         if (!rp.length) { toast('没有可背的题目'); break; }
         startSpecial(rp.map(function (q) { return q.id; }), { recite: true });
+        break;
+      }
+      case 'btnReciteJudgeFalse': {
+        var rj = judgeFalseIds();
+        if (!rj.length) { toast('没有可背的题目'); break; }
+        startSession(shuffleArr(rj), { recite: true, label: '背题·判断错误答案' });
+        break;
+      }
+      case 'btnReciteMultiPartial': {
+        var rm = multiPartialIds();
+        if (!rm.length) { toast('没有可背的题目'); break; }
+        startSession(shuffleArr(rm), { recite: true, label: '背题·多选不全选' });
         break;
       }
       case 'swInstant': case 'swInstant2':
