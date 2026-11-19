@@ -14,7 +14,7 @@
   function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
 
   /* ---------------- 存储 ---------------- */
-  var K = { settings: 'gw_settings_v1', wrong: 'gw_wrong_v1', stats: 'gw_stats_v1', filter: 'gw_filter_v1' };
+  var K = { settings: 'gw_settings_v1', wrong: 'gw_wrong_v1', stats: 'gw_stats_v1', filter: 'gw_filter_v1', hist: 'gw_hist_v1' };
 
   function load(key, def) {
     try {
@@ -30,7 +30,7 @@
 
   function newStats() {
     return {
-      answered: 0, correct: 0, sessions: 0,
+      answered: 0, correct: 0, sessions: 0, seq: 0,
       single: { ok: 0, bad: 0 },
       multi: { full: 0, short: 0, wrong: 0 },
       judge: { ok: 0, bad: 0 }
@@ -39,6 +39,33 @@
   var stats = load(K.stats, null) || newStats();
   if (!stats.single) stats = newStats();
   var wrongBook = load(K.wrong, {}) || {};
+
+  /* 作答记忆：每道题最近两次判定 + 连对两次后的冷却（第 3 局不出） */
+  var hist = load(K.hist, {}) || {};
+  var COOL_GAP = 1;   // 连对两次后跳过的局数（=1 表示下一局不出现）
+
+  function saveHist() { save(K.hist, hist); }
+
+  function recOf(id) { return hist[id] || null; }
+
+  function pushResult(id, status) {
+    var h = hist[id] || { r: [] };
+    h.r = [status].concat(h.r).slice(0, 2);
+    if (h.r.length === 2 && h.r[0] === 'correct' && h.r[1] === 'correct') {
+      h.cool = stats.seq;     // 连对两次 → 记录冷却起点
+    } else {
+      h.cool = undefined;
+    }
+    h.t = Date.now();
+    hist[id] = h;
+  }
+
+  function cooling(id) {
+    var h = recOf(id);
+    if (!h || h.cool === undefined) return false;
+    var next = stats.seq + 1;          // 即将开始的一局
+    return next > h.cool && (next - h.cool) <= COOL_GAP;
+  }
 
   /* ---------------- 工具 ---------------- */
   function shuffleArr(a) {
@@ -138,10 +165,75 @@
     });
   }
 
+  /* 智能抽题：错题优先（尽量多出）+ 未做过优先补位 + 连对两次的题第 3 局跳过
+     —— 目标：错题反复练、生题尽快覆盖、已掌握的题不占用名额 */
+  function smartPick(pool, want) {
+    var W = [], NEW = [], R = [], C = [];
+    pool.forEach(function (q) {
+      var h = recOf(q.id);
+      var r = (h && h.r) ? h.r : [];
+      if (r[0] === 'correct' && r[1] === 'correct' && cooling(q.id)) { C.push(q); return; }
+      if (!r.length) { NEW.push(q); return; }
+      if (r[0] !== 'correct') { W.push(q); return; }
+      R.push(q);
+    });
+
+    // 错题按「错得次数多」优先，同分随机
+    W = shuffleArr(W).sort(function (a, b) {
+      var na = (wrongBook[a.id] && wrongBook[a.id].n) || 0;
+      var nb = (wrongBook[b.id] && wrongBook[b.id].n) || 0;
+      return nb - na;
+    });
+
+    var N = Math.min(want, pool.length);
+    var picked = [];
+
+    // 给未做过的题留至少 20% 名额（池里还有生题、且题量 ≥3 时），保证能一题一题铺开
+    var cov = (NEW.length && N >= 3) ? Math.max(1, Math.round(N * 0.2)) : 0;
+    cov = Math.min(cov, NEW.length, N);
+    var wTake = Math.min(W.length, N - cov);
+    if (wTake > 0) picked = picked.concat(W.slice(0, wTake));
+
+    var rest = N - picked.length;
+    var newTake = Math.min(NEW.length, Math.max(cov, rest));
+    if (newTake > 0) picked = picked.concat(NEW.slice(0, newTake));
+
+    rest = N - picked.length;
+    if (rest > 0) {
+      var others = shuffleArr(R.concat(NEW.slice(newTake)));
+      picked = picked.concat(others.slice(0, rest));
+    }
+    rest = N - picked.length;
+    if (rest > 0) picked = picked.concat(shuffleArr(W.slice(wTake)).slice(0, rest));
+    rest = N - picked.length;
+    if (rest > 0) picked = picked.concat(shuffleArr(C).slice(0, rest));
+
+    return shuffleArr(picked);
+  }
+
+  function poolStats() {
+    var pool = currentPool();
+    var s = { wrong: 0, fresh: 0, cool: 0, review: 0 };
+    pool.forEach(function (q) {
+      var h = recOf(q.id);
+      var r = (h && h.r) ? h.r : [];
+      if (r[0] === 'correct' && r[1] === 'correct' && cooling(q.id)) { s.cool++; return; }
+      if (!r.length) { s.fresh++; return; }
+      if (r[0] !== 'correct') s.wrong++; else s.review++;
+    });
+    return s;
+  }
+
   function renderPool() {
     var pool = currentPool();
     $('#poolCount').textContent = pool.length;
     $('#btnStart').disabled = pool.length === 0;
+    var ps = poolStats();
+    var note = $('#poolNote');
+    if (note) {
+      note.textContent = '错题 ' + ps.wrong + ' · 未做 ' + ps.fresh +
+        ' · 连对两次本局跳过 ' + ps.cool;
+    }
     save(K.filter, { types: filter.types, count: filter.count, parts: filter.parts });
   }
 
@@ -196,6 +288,9 @@
       label: opts.label || ''
     };
 
+    if (!stats.seq) stats.seq = 0;
+    if (!session.recite) { stats.seq++; save(K.stats, stats); }
+
     session.ids.forEach(function (id) {
       var q = byId[id];
       var keys = q.options.map(function (o) { return o.key; });
@@ -236,9 +331,15 @@
       wrongBook[q.id] = { n: w.n + 1, t: Date.now(), last: status };
     }
 
+    if (!stats.seq) stats.seq = 0;
+
+    pushResult(q.id, status);
+
     save(K.stats, stats);
     save(K.wrong, wrongBook);
+    saveHist();
     updateBadge();
+    renderPool();
   }
 
   /* 只练「错选 / 漏选」的多选题：错题本里题型为多选、且最近一次判定不是全对的题 */
@@ -714,14 +815,12 @@
       case 'btnStart': {
         var pool = currentPool();
         if (!pool.length) { toast('没有符合条件的题目'); break; }
-        var shuffled = shuffleArr(pool);
-        var count = filter.count === 'all' ? shuffled.length : Math.min(Number(filter.count), shuffled.length);
-        startSession(shuffled.slice(0, count).map(function (q) { return q.id; }));
+        var count = filter.count === 'all' ? pool.length : Math.min(Number(filter.count), pool.length);
+        startSession(smartPick(pool, count).map(function (q) { return q.id; }));
         break;
       }
       case 'btnQuick20': {
-        var p = BANK.slice();
-        startSession(shuffleArr(p).slice(0, 20).map(function (q) { return q.id; }));
+        startSession(smartPick(BANK, 20).map(function (q) { return q.id; }));
         break;
       }
       case 'btnWrongSession':
@@ -745,8 +844,8 @@
         break;
       case 'btnResetAll':
         askConfirm('将清除错题本、统计和偏好设置，确定继续？', function () {
-          localStorage.removeItem(K.wrong); localStorage.removeItem(K.stats); localStorage.removeItem(K.settings);
-          wrongBook = {}; stats = newStats();
+          localStorage.removeItem(K.wrong); localStorage.removeItem(K.stats); localStorage.removeItem(K.settings); localStorage.removeItem(K.hist);
+          wrongBook = {}; stats = newStats(); hist = {};
           settings = { shuffle: true, instant: true, autoRemove: true };
           save(K.stats, stats); save(K.wrong, wrongBook); save(K.settings, settings);
           syncSwitches(); updateBadge(); renderStats(); renderWrong(); toast('已清除全部数据');

@@ -219,6 +219,13 @@ main { flex: 1; padding: 16px 16px 96px; }
 }
 .pool-line b { font-weight: 700; font-size: 15px; }
 
+.pool-note {
+  margin: 6px 2px 0;
+  font-size: 11.5px;
+  color: #6b7a73;
+  letter-spacing: .2px;
+}
+
 .primary {
   width: 100%;
   margin-top: 14px;
